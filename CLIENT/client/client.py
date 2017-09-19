@@ -26,8 +26,25 @@ class Client:
             if inp == 'exit':
                 break
             self.sk.sendall(bytes(inp, 'utf8'))
-            data = self.sk.recv(1024)
-            print(str(data, 'utf8'))
+            data = self.sk.recv(1024)  # 先接收json
+            data = eval(str(data, 'utf8'))
+            if data['type'] == 'msg':
+                self.receive_msg(data['length'], 'utf8')
+            elif data['type'] == 'cmd':
+                self.receive_msg(data['length'], 'gbk')
+            else:
+                self.receive_file()
+
+    def receive_msg(self, length, coding):
+        self.sk.send(bytes('1', 'utf8'))
+        data = bytes()
+        while len(data) != length:
+            result = self.sk.recv(1024)
+            data += result
+        print(str(data, coding))
+
+    def receive_file(self):
+        pass
 
     def login(self):
         while True:
@@ -36,7 +53,6 @@ class Client:
             self.sk.sendall(bytes('login %s %s' % (username, passwrod), 'utf8'))
             data = str(self.sk.recv(1024), 'utf8')
             if data == '0':
-
                 self.run(username)
             else:
                 print('用户名或密码错误')
