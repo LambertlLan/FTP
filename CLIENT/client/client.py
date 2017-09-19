@@ -13,9 +13,9 @@ class Client:
     def run(self, user):
         menu = '''
                 -----------用户%s 欢迎登录FTP-----------
-                切换目录:CD
+                切换目录:CD 盘符、相对路经、根路径 (完成)
                 查看家目录:HOME
-                查看当前文件夹下文件:DIR
+                查看当前文件夹下文件:DIR (完成)
                 下载文件:GET FILE_NAME
                 上传文件:POST CLIENT_FILE_PATH
                 退出:EXIT
@@ -41,6 +41,7 @@ class Client:
         while len(data) != length:
             result = self.sk.recv(1024)
             data += result
+            print(len(data))
         print(str(data, coding))
 
     def receive_file(self):

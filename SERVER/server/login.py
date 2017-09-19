@@ -10,7 +10,7 @@ class Login:
         if user in main_json:
             m = hashlib.md5()
             m.update(pwd.encode('utf8'))
-            if main_json[user] == m.hexdigest():
-                return True
+            if main_json[user]['pwd'] == m.hexdigest():
+                return {'username': user, 'data': main_json[user]}
         else:
             return False
