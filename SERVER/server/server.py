@@ -3,6 +3,7 @@
 import socketserver, subprocess, os
 from server import login
 from conf import setting
+from db import db_hander
 
 
 class Actions(object):
@@ -66,25 +67,31 @@ class Actions(object):
 
     # 上传文件
     def receive_file(self, cmd_order, cmd_list):
+        user_space = int(self.user_data['data']['space'])
         self.conn.send(bytes('1', 'utf8'))
         file_info = self.conn.recv(1024)
         file_info = eval(str(file_info, 'utf8'))
-        file_name = file_info['file_name']
         file_size = file_info['file_size']
-        file_path = os.path.join(self.user_data['dir'], file_name)
-        self.conn.send(bytes('file_info已接收', 'utf8'))
-        if not os.path.exists(file_path):
-            with open(file_path, 'wb') as file:
-                has_receive = 0
-                # 循环接收并储存文件，以免占用过多内存
-                while has_receive != file_size:
-                    data = self.conn.recv(1024)
-                    file.write(data)
-                    has_receive += len(data)
-            print('%s文件接收完成' % file_name)
-            self.send_msg('msg', '%s文件接收完成' % file_name)
+        if file_size < user_space:
+            file_name = file_info['file_name']
+            file_path = os.path.join(self.user_data['dir'], file_name)
+            self.conn.send(bytes('file_info已接收', 'utf8'))
+            if not os.path.exists(file_path):
+                with open(file_path, 'wb') as file:
+                    has_receive = 0
+                    # 循环接收并储存文件，以免占用过多内存
+                    while has_receive != file_size:
+                        data = self.conn.recv(1024)
+                        file.write(data)
+                        has_receive += len(data)
+                print('%s文件接收完成' % file_name)
+                self.user_data['data']['space'] = str(user_space - file_size)
+                db_hander.update_data(self.user_data['username'], self.user_data['data'])
+                self.send_msg('msg', '%s文件接收完成' % file_name)
+            else:
+                self.send_msg('msg', '该文件已经存在')
         else:
-            self.send_msg('msg', '该文件已经存在')
+            self.conn.send(bytes('-1', 'utf8'))
 
     # 下载文件
     def send_file(self, cmd_order, cmd_list):

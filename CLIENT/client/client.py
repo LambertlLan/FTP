@@ -19,15 +19,19 @@ class Client(object):
         file_name = os.path.basename(file_path)
         file_info = dict([('file_name', file_name), ('file_size', file_size)])
         self.sk.sendall(bytes(str(file_info), 'utf8'))
-        print(str(self.sk.recv(1024), 'utf8'))
-        with open(file_path, 'rb') as file:
-            has_sent = 0
-            while has_sent != file_size:
-                data = file.read(1024)
-                self.sk.sendall(data)
-                has_sent += len(data)
-                print(round((has_sent / file_size) * 100, 2), '%')
-        self.receive_json()
+
+        status = str(self.sk.recv(1024), 'utf8')
+        if status != '-1':
+            with open(file_path, 'rb') as file:
+                has_sent = 0
+                while has_sent != file_size:
+                    data = file.read(1024)
+                    self.sk.sendall(data)
+                    has_sent += len(data)
+                    print(round((has_sent / file_size) * 100, 2), '%')
+            self.receive_json()
+        else:
+            print('用户可用空间不足')
 
     # 封装接收消息函数
     def receive_json(self):

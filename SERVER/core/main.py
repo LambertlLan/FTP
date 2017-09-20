@@ -8,7 +8,8 @@ from db import db_hander
 
 def init_db():
     if not os.path.exists(setting.DB_PATH):
-        main_json = {'admin': {'pwd': '21232f297a57a5a743894a0e4a801fc3'}}
+        # 每个人分配100mb空间
+        main_json = {'admin': {'pwd': '21232f297a57a5a743894a0e4a801fc3', 'space': '104857600'}}
         db_hander.write_data(main_json)
 
 
