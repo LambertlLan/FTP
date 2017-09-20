@@ -5,24 +5,28 @@ from server import login
 from conf import setting
 
 
-class Actions:
+class Actions(object):
     def __init__(self, conn):
         self.conn = conn
         self.user_data = {}
         self.current_dir = './'
 
+    # 进行登录验证，并读出用户数据赋给self.user_data
     def login(self, cmd_order, cmd_list):
         username = cmd_list[1]
         password = cmd_list[2]
         is_login = login.Login()
         self.user_data = is_login.validator(username, password)
         if self.user_data:
+            # 登录成功,检测用户专属文件夹
             user_dir = os.path.join(setting.BASE_DIR, 'upload', self.user_data['username'])
             if not os.path.exists(user_dir):
+                # 创建用户专属文件夹
                 os.mkdir(user_dir)
             self.user_data['dir'] = user_dir
             self.conn.send(bytes('0', 'utf8'))
         else:
+            # 登录失败
             self.conn.send(bytes('-1', 'utf8'))
 
     def home(self, cmd_order, cmd_list):
@@ -32,20 +36,22 @@ class Actions:
         self.show(cmd_order, cmd_list)
 
     def cmd_cd(self, cmd_order, cmd_list):
-        if cmd_list[0] == 'cd' and len(cmd_list) > 1:
-            if cmd_list[1].find(':') == -1:
+        if len(cmd_list) > 1:
+            if cmd_list[1].find(':') == -1:  # 处理CD命令 类似 cd ../
                 self.current_dir = os.path.join(self.current_dir, cmd_list[1])
-            elif cmd_list[1].find(':') == 1:
+            elif cmd_list[1].find(':') == 1:  # 处理盘符切换 类似 cd c:
                 self.current_dir = cmd_list[1]
         self.show(cmd_order, cmd_list)
 
     def show(self, cmd_order, cmd_list):
+        # 根据当前路径执行系统命令
         print(self.current_dir)
         cmd_obj = subprocess.Popen(cmd_order, shell=True, stdout=subprocess.PIPE, cwd=self.current_dir)
         cmd_result = cmd_obj.stdout.read()
         self.send_msg('cmd', cmd_result)
 
     def send_msg(self, msg_type, msg):
+        # 根据msg的类型判断编码格式
         if type(msg) == str:
             msg = bytes(msg, 'utf8')
         result_length = len(msg)
@@ -58,6 +64,7 @@ class Actions:
 
         self.conn.sendall(msg)
 
+    # 上传文件
     def receive_file(self, cmd_order, cmd_list):
         self.conn.send(bytes('1', 'utf8'))
         file_info = self.conn.recv(1024)
@@ -69,6 +76,7 @@ class Actions:
         if not os.path.exists(file_path):
             with open(file_path, 'wb') as file:
                 has_receive = 0
+                # 循环接收并储存文件，以免占用过多内存
                 while has_receive != file_size:
                     data = self.conn.recv(1024)
                     file.write(data)
@@ -78,10 +86,10 @@ class Actions:
         else:
             self.send_msg('msg', '该文件已经存在')
 
+    # 下载文件
     def send_file(self, cmd_order, cmd_list):
         file_path = os.path.join(setting.BASE_DIR, self.user_data['dir'], cmd_list[1])
         if os.path.exists(file_path):
-
             file_name = os.path.basename(file_path)
             file_size = os.stat(file_path).st_size
             file_info = dict([('file_name', file_name), ('file_size', file_size)])
@@ -91,17 +99,19 @@ class Actions:
             }
             self.conn.sendall(bytes(str(file_data), 'utf8'))
             length_response = str(self.conn.recv(1024), 'utf8')
-            if length_response == '-1':
+            if length_response == '-1':  # 如果为1表示客户端已经存在
                 print('当前文件在客户端已存在')
-            else:
+            else:  # 如果为0或者文件现有size
+                # 从客户端获取文件现在大小
                 has_send = int(length_response)
                 print('开始传输文件')
                 with open(file_path, 'rb') as file:
+                    # 将文件指针移动到客户端文件大小处
                     file.seek(has_send)
                     while has_send != file_size:
                         data = file.read(1024)
                         has_send += len(data)
-                        try:
+                        try:  # 捕捉错误并结束传输数据（如果客户端崩溃，self.conn.sendall会报错）
                             self.conn.sendall(data)
                         except Exception as e:
                             print(e)
