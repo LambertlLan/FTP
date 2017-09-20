@@ -13,3 +13,10 @@ def read_data():
     with open(setting.DB_PATH, 'rb') as f:
         data = pickle.load(f)
         return data
+
+
+def update_data(username, user_data):
+    main_data = read_data()
+    main_data[username] = user_data
+    with open(setting.DB_PATH, 'wb') as f:
+        pickle.dump(main_data, f)

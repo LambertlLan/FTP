@@ -58,6 +58,61 @@ class Actions:
 
         self.conn.sendall(msg)
 
+    def receive_file(self, cmd_order, cmd_list):
+        self.conn.send(bytes('1', 'utf8'))
+        file_info = self.conn.recv(1024)
+        file_info = eval(str(file_info, 'utf8'))
+        file_name = file_info['file_name']
+        file_size = file_info['file_size']
+        file_path = os.path.join(self.user_data['dir'], file_name)
+        self.conn.send(bytes('file_info已接收', 'utf8'))
+        if not os.path.exists(file_path):
+            with open(file_path, 'wb') as file:
+                has_receive = 0
+                while has_receive != file_size:
+                    data = self.conn.recv(1024)
+                    file.write(data)
+                    has_receive += len(data)
+            print('%s文件接收完成' % file_name)
+            self.send_msg('msg', '%s文件接收完成' % file_name)
+        else:
+            self.send_msg('msg', '该文件已经存在')
+
+    def send_file(self, cmd_order, cmd_list):
+        file_path = os.path.join(setting.BASE_DIR, self.user_data['dir'], cmd_list[1])
+        if os.path.exists(file_path):
+
+            file_name = os.path.basename(file_path)
+            file_size = os.stat(file_path).st_size
+            file_info = dict([('file_name', file_name), ('file_size', file_size)])
+            file_data = {
+                'type': 'file',
+                'file_info': file_info,
+            }
+            self.conn.sendall(bytes(str(file_data), 'utf8'))
+            length_response = str(self.conn.recv(1024), 'utf8')
+            if length_response == '-1':
+                print('当前文件在客户端已存在')
+            else:
+                has_send = int(length_response)
+                print('开始传输文件')
+                with open(file_path, 'rb') as file:
+                    file.seek(has_send)
+                    while has_send != file_size:
+                        data = file.read(1024)
+                        has_send += len(data)
+                        try:
+                            self.conn.sendall(data)
+                        except Exception as e:
+                            print(e)
+                            break
+                    if has_send == file_size:
+                        print('%s文件下载完成' % file_name)
+                    else:
+                        print('%s文件传输了%s' % (file_name, round(has_send / file_size * 100, 2)))
+        else:
+            self.send_msg('msg', '没有该文件')
+
 
 class MyServer(socketserver.BaseRequestHandler):
     def handle(self):
@@ -72,7 +127,9 @@ class MyServer(socketserver.BaseRequestHandler):
                 'login': obj.login,
                 'cd': obj.cmd_cd,
                 'dir': obj.show,
-                'home': obj.home
+                'home': obj.home,
+                'post': obj.receive_file,
+                'get': obj.send_file
             }
             while True:
                 try:
