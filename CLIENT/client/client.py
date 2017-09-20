@@ -98,9 +98,9 @@ class Client(object):
     def run(self, user):
         menu = '''
                 -----------用户%s 欢迎登录FTP-----------
-                切换目录:CD 盘符、相对路经、根路径 (完成)
-                查看家目录:HOME (完成)
-                查看当前文件夹下文件:DIR (完成)
+                切换目录:CD 盘符、相对路经、根路径 
+                查看家目录:HOME 
+                查看当前文件夹下文件:DIR
                 下载文件:GET FILE_NAME
                 上传文件:POST CLIENT_FILE_PATH
                 注销:LOGOUT
